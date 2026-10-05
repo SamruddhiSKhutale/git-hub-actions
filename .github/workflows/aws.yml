@@ -1,11 +1,12 @@
-name: farhat buckets
+name: Create 20 S3 Buckets
+
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
 
 env:
-  AWS_REGION: us-east-1   # Mumbai; change if you like
+  AWS_REGION: us-east-1
   PREFIX: farhat
 
 jobs:
@@ -17,7 +18,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: us-east-1
 
       - name: Create 20 buckets (skip if they already exist)
         run: |
@@ -34,8 +35,7 @@ jobs:
             echo "Creating bucket: $BUCKET"
             aws s3api create-bucket \
               --bucket "$BUCKET" \
-              --region "$AWS_REGION" \
-              --create-bucket-configuration LocationConstraint="$AWS_REGION"
+              --region us-east-1
 
             aws s3api put-public-access-block \
               --bucket "$BUCKET" \
