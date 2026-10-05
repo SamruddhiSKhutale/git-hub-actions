@@ -5,6 +5,10 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+permissions:
+  id-token: write
+  contents: read
+
 env:
   AWS_REGION: us-east-1
   PREFIX: farhat
@@ -13,11 +17,10 @@ jobs:
   create-buckets:
     runs-on: ubuntu-latest
     steps:
-      - name: Configure AWS credentials
+      - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: arn:aws:iam::942849038148:role/github-actions-s3-role
           aws-region: us-east-1
 
       - name: Create 20 buckets (skip if they already exist)
