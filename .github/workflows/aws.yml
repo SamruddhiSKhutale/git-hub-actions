@@ -1,4 +1,4 @@
-name: Delete 20 S3 Buckets
+name: Create 20 S3 Buckets
 
 on:
   push:
@@ -10,7 +10,7 @@ env:
   PREFIX: farhat
 
 jobs:
-  delete-buckets:
+  create-buckets:
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS credentials
@@ -20,7 +20,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
-      - name: Delete 20 buckets (skip if missing)
+      - name: Create 20 buckets (skip if they already exist)
         run: |
           ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
@@ -28,12 +28,20 @@ jobs:
             BUCKET="${PREFIX}-${ACCOUNT_ID}-${i}"
 
             if aws s3api head-bucket --bucket "$BUCKET" 2>/dev/null; then
-              echo "Deleting bucket: $BUCKET"
-              aws s3 rb "s3://$BUCKET" --force
-            else
-              echo "Bucket not found, skipping: $BUCKET"
+              echo "Bucket already exists, skipping: $BUCKET"
+              continue
             fi
+
+            echo "Creating bucket: $BUCKET"
+            aws s3api create-bucket \
+              --bucket "$BUCKET" \
+              --region us-east-1
+
+            aws s3api put-public-access-block \
+              --bucket "$BUCKET" \
+              --public-access-block-configuration \
+              BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
           done
 
-      - name: List remaining farhat buckets
-        run: aws s3 ls | grep "${PREFIX}" || echo "No farhat buckets left"
+      - name: List farhat buckets
+        run: aws s3 ls | grep "${PREFIX}"
