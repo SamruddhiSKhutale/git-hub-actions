@@ -1,13 +1,14 @@
-name: Create EC2 Instance
+name: Create 20 S3 Buckets
 
 on:
-  workflow_dispatch:   # run manually from the Actions tab
+  workflow_dispatch:
 
 env:
   AWS_REGION: us-east-1   # Mumbai; change if you like
+  PREFIX: farhat
 
 jobs:
-  create-instance:
+  create-buckets:
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS credentials
@@ -17,20 +18,24 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Launch EC2 instance
+      - name: Create 20 buckets
         run: |
-          INSTANCE_ID=$(aws ec2 run-instances \
-            --image-id resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64 \
-            --instance-type t2.micro \
-            --count 1 \
-            --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=github-actions-instance}]' \
-            --query 'Instances[0].InstanceId' \
-            --output text)
-          echo "Created instance: $INSTANCE_ID"
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
-      - name: Show instance details
-        run: |
-          aws ec2 describe-instances \
-            --filters "Name=tag:Name,Values=github-actions-instance" \
-            --query 'Reservations[].Instances[].[InstanceId,State.Name,PublicIpAddress]' \
-            --output table
+          for i in $(seq -w 1 20); do
+            BUCKET="${PREFIX}-${ACCOUNT_ID}-${i}"
+            echo "Creating bucket: $BUCKET"
+
+            aws s3api create-bucket \
+              --bucket "$BUCKET" \
+              --region "$AWS_REGION" \
+              --create-bucket-configuration LocationConstraint="$AWS_REGION"
+
+            aws s3api put-public-access-block \
+              --bucket "$BUCKET" \
+              --public-access-block-configuration \
+              BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
+          done
+
+      - name: List farhat buckets
+        run: aws s3 ls | grep "${PREFIX}"
